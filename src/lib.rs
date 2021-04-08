@@ -23,6 +23,18 @@ pub fn set_log_level(level: LogLevel) {
     }
 }
 
+// TODO: This guard is stupid, callback should live as long as seat is alive
+pub struct TemporaryFreeGuard(*mut SeatListenerUserData, *mut sys::libseat_seat_listener);
+
+impl Drop for TemporaryFreeGuard {
+    fn drop(&mut self) {
+        unsafe {
+            Box::from_raw(self.0);
+            Box::from_raw(self.1);
+        }
+    }
+}
+
 type SeatClosure = dyn FnMut(&mut Seat);
 
 struct SeatListenerUserData {
@@ -49,7 +61,7 @@ extern "C" fn disable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_v
 pub struct Seat(NonNull<sys::libseat>);
 
 impl Seat {
-    pub fn open<E, D>(enable: E, disable: D) -> Option<Self>
+    pub fn open<E, D>(enable: E, disable: D) -> (Option<Self>, TemporaryFreeGuard)
     where
         E: FnMut(&mut Self) + 'static,
         D: FnMut(&mut Self) + 'static,
@@ -69,7 +81,9 @@ impl Seat {
 
         let seat = unsafe { sys::libseat_open_seat(listener, user_data as *mut _) };
 
-        NonNull::new(seat).map(Self)
+        let s = NonNull::new(seat).map(Self);
+
+        (s, TemporaryFreeGuard(user_data, listener))
     }
 }
 

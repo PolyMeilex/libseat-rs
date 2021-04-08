@@ -7,7 +7,7 @@ fn main() {
 
     let a1 = active.clone();
     let a2 = active.clone();
-    let mut seat = Seat::open(
+    let (seat, guard) = Seat::open(
         move |seat| {
             println!("Enable");
             unsafe { println!("Name: {}", seat.name()) };
@@ -20,15 +20,17 @@ fn main() {
             *a2.borrow_mut() = false;
             unsafe { seat.disable() };
         },
-    )
-    .unwrap();
+    );
 
-    while !(*active.borrow()) {
-        println!("waiting for activation...n");
-        unsafe { seat.dispatch(-1) };
+    if let Some(mut seat) = seat {
+        while !(*active.borrow()) {
+            println!("waiting for activation...n");
+            unsafe { seat.dispatch(-1) };
+        }
+
+        unsafe { seat.close() };
     }
 
-    unsafe {
-        seat.close();
-    }
+    // TODO: This guard is stupid, callback should live as long as seat is alive
+    drop(guard);
 }
