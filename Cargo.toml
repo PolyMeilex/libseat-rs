@@ -1,0 +1,11 @@
+[package]
+name = "libseat"
+version = "0.1.0"
+authors = ["Poly <marynczak.bartlomiej@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+libseat-sys = {path="./libseat-sys"}
+
+[[example]]
+name = "simple"

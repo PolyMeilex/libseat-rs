@@ -1,0 +1,12 @@
+[package]
+name = "libseat-sys"
+version = "0.1.0"
+authors = ["Poly <marynczak.bartlomiej@gmail.com>"]
+edition = "2018"
+
+[features]
+use_bindgen = ["bindgen", "pkg-config"]
+
+[build-dependencies]
+bindgen = { version = "0.58.1", optional = true }
+pkg-config = { version = "0.3.19", optional = true }
