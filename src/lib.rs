@@ -9,19 +9,13 @@ use std::{
     ptr::NonNull,
 };
 
-use sys::{
-    libseat_log_level_LIBSEAT_LOG_LEVEL_DEBUG, libseat_log_level_LIBSEAT_LOG_LEVEL_ERROR,
-    libseat_log_level_LIBSEAT_LOG_LEVEL_INFO, libseat_log_level_LIBSEAT_LOG_LEVEL_LAST,
-    libseat_log_level_LIBSEAT_LOG_LEVEL_SILENT,
-};
-
 #[repr(u32)]
 pub enum LogLevel {
-    Silent = libseat_log_level_LIBSEAT_LOG_LEVEL_SILENT,
-    Error = libseat_log_level_LIBSEAT_LOG_LEVEL_ERROR,
-    Info = libseat_log_level_LIBSEAT_LOG_LEVEL_INFO,
-    Debug = libseat_log_level_LIBSEAT_LOG_LEVEL_DEBUG,
-    Last = libseat_log_level_LIBSEAT_LOG_LEVEL_LAST,
+    Silent = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_SILENT,
+    Error = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_ERROR,
+    Info = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_INFO,
+    Debug = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_DEBUG,
+    Last = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_LAST,
 }
 
 pub fn set_log_level(level: LogLevel) {
@@ -60,7 +54,7 @@ pub struct Seat {
 }
 
 impl Seat {
-    pub fn open<E, D>(enable: E, disable: D) -> Option<Self>
+    pub fn open<E, D>(enable: E, disable: D) -> Result<Self, ()>
     where
         E: FnMut(&mut SeatRef) + 'static,
         D: FnMut(&mut SeatRef) + 'static,
@@ -80,11 +74,13 @@ impl Seat {
         let seat =
             unsafe { sys::libseat_open_seat(&mut *listener, &mut *user_data as *mut _ as *mut _) };
 
-        NonNull::new(seat).map(|nn| Self {
-            inner: SeatRef(nn),
-            _ffi_listener: listener,
-            _user_listener: user_data,
-        })
+        NonNull::new(seat)
+            .map(|nn| Self {
+                inner: SeatRef(nn),
+                _ffi_listener: listener,
+                _user_listener: user_data,
+            })
+            .ok_or(())
     }
 }
 
@@ -111,23 +107,25 @@ impl DerefMut for Seat {
 pub struct SeatRef(NonNull<sys::libseat>);
 
 impl SeatRef {
-    pub fn name(&mut self) -> &str {
-        unsafe {
-            let cstr = sys::libseat_seat_name(self.0.as_mut());
-            let cstr = std::ffi::CStr::from_ptr(cstr as *const _);
-            cstr.to_str().unwrap()
+    /// Disables a seat, used in response to a disable_seat event. After disabling
+    /// the seat, the seat devices must not be used until enable_seat is received,
+    /// and all requests on the seat will fail during this period.
+    pub fn disable(&mut self) -> Result<(), ()> {
+        if unsafe { sys::libseat_disable_seat(self.0.as_mut()) } == 0 {
+            Ok(())
+        } else {
+            Err(())
         }
     }
 
-    pub fn dispatch(&mut self, timeout: i32) {
-        unsafe { sys::libseat_dispatch(self.0.as_mut(), timeout) };
-    }
-
-    pub fn disable(&mut self) {
-        unsafe { sys::libseat_disable_seat(self.0.as_mut()) };
-    }
-
-    pub fn open_device<P: AsRef<Path>>(&mut self, path: &P) -> Option<(i32, RawFd)> {
+    /// Opens a device on the seat, returning its device ID and fd
+    ///
+    /// This will only succeed if the seat is active and the device is of a type
+    /// permitted for opening on the backend, such as drm and evdev.
+    ///
+    /// The device may be revoked in some situations, such as in situations where a
+    /// seat session switch is being forced.
+    pub fn open_device<P: AsRef<Path>>(&mut self, path: &P) -> Result<(i32, RawFd), ()> {
         let path = path.as_ref();
         let string = path.as_os_str().to_str().unwrap();
         let cstring = CString::new(string).unwrap();
@@ -138,13 +136,74 @@ impl SeatRef {
 
         if dev_id != -1 {
             let fd = unsafe { fd.assume_init() };
-            Some((dev_id, fd))
+            Ok((dev_id, fd))
         } else {
-            None
+            Err(())
         }
     }
 
-    pub fn close_device(&mut self, device_id: i32) {
-        unsafe { sys::libseat_close_device(self.0.as_mut(), device_id) };
+    /// Closes a device that has been opened on the seat using the device_id from
+    /// libseat_open_device.
+    pub fn close_device(&mut self, device_id: i32) -> Result<(), ()> {
+        if unsafe { sys::libseat_close_device(self.0.as_mut(), device_id) } == 0 {
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
+    /// Retrieves the name of the seat that is currently made available through the
+    /// provided libseat instance.
+    pub fn name(&mut self) -> &str {
+        unsafe {
+            let cstr = sys::libseat_seat_name(self.0.as_mut());
+            let cstr = std::ffi::CStr::from_ptr(cstr as *const _);
+            cstr.to_str().unwrap()
+        }
+    }
+
+    /// Requests that the seat switches session to the specified session number.
+    /// For seats that are VT-bound, the session number matches the VT number, and
+    /// switching session results in a VT switch.
+    ///
+    /// A call to libseat_switch_session does not imply that a switch will occur,
+    /// and the caller should assume that the session continues unaffected.
+    pub fn switch_session(&mut self, session: i32) -> Result<(), ()> {
+        if unsafe { sys::libseat_switch_session(self.0.as_mut(), session) } == 0 {
+            Ok(())
+        } else {
+            Err(())
+        }
+    }
+
+    /// Retrieve the pollable connection fd for a given libseat instance. Used to
+    /// poll the libseat connection for events that need to be dispatched.
+    ///
+    /// Returns a pollable fd on success.
+    pub fn get_fd(&mut self) -> Result<RawFd, ()> {
+        let fd = unsafe { sys::libseat_get_fd(self.0.as_mut()) };
+        if fd == -1 {
+            Err(())
+        } else {
+            Ok(fd)
+        }
+    }
+
+    /// Reads and dispatches events on the libseat connection fd.
+    ///
+    /// The specified timeout dictates how long libseat might wait for data if none
+    /// is available: 0 means that no wait will occur, -1 means that libseat might
+    /// wait indefinitely for data to arrive, while > 0 is the maximum wait in
+    /// milliseconds that might occur.
+    ///
+    /// Returns a positive number signifying processed internal messages on success.
+    /// Returns 0 if no messages were processed. Returns -1 and sets errno on error.
+    pub fn dispatch(&mut self, timeout: i32) -> Result<i32, ()> {
+        let v = unsafe { sys::libseat_dispatch(self.0.as_mut(), timeout) };
+        if v == -1 {
+            Err(())
+        } else {
+            Ok(v)
+        }
     }
 }

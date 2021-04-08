@@ -18,14 +18,14 @@ fn main() {
             println!("Disable");
 
             *a2.borrow_mut() = false;
-            seat.disable();
+            seat.disable().unwrap();
         },
     );
 
-    if let Some(mut seat) = seat {
+    if let Ok(mut seat) = seat {
         while !(*active.borrow()) {
             println!("waiting for activation...n");
-            seat.dispatch(-1);
+            seat.dispatch(-1).unwrap();
         }
 
         // Close seat
