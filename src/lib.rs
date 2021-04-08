@@ -9,30 +9,13 @@ use std::{
     ptr::NonNull,
 };
 
-#[repr(u32)]
-pub enum LogLevel {
-    Silent = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_SILENT,
-    Error = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_ERROR,
-    Info = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_INFO,
-    Debug = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_DEBUG,
-    Last = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_LAST,
-}
-
-pub fn set_log_level(level: LogLevel) {
-    unsafe {
-        sys::libseat_set_log_level(level as u32);
-    }
-}
-
-type SeatClosure = dyn FnMut(&mut SeatRef);
-
-struct SeatListenerUserData {
-    enable_seat: Box<SeatClosure>,
-    disable_seat: Box<SeatClosure>,
+struct UserSeatListener {
+    enable_seat: Box<dyn FnMut(&mut SeatRef)>,
+    disable_seat: Box<dyn FnMut(&mut SeatRef)>,
 }
 
 extern "C" fn enable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_void) {
-    let data = data as *mut SeatListenerUserData;
+    let data = data as *mut UserSeatListener;
     let data = unsafe { &mut *data };
 
     let mut seat = unsafe { SeatRef(NonNull::new_unchecked(seat)) };
@@ -40,7 +23,7 @@ extern "C" fn enable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_vo
 }
 
 extern "C" fn disable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_void) {
-    let data = data as *mut SeatListenerUserData;
+    let data = data as *mut UserSeatListener;
     let data = unsafe { &mut *data };
 
     let mut seat = unsafe { SeatRef(NonNull::new_unchecked(seat)) };
@@ -50,10 +33,13 @@ extern "C" fn disable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_v
 pub struct Seat {
     inner: SeatRef,
     _ffi_listener: Box<sys::libseat_seat_listener>,
-    _user_listener: Box<SeatListenerUserData>,
+    _user_listener: Box<UserSeatListener>,
 }
 
 impl Seat {
+    /// Opens a seat, taking control of it if possible and returning a pointer to
+    /// the libseat instance. If LIBSEAT_BACKEND is set, the specified backend is
+    /// used. Otherwise, the first successful backend will be used.
     pub fn open<E, D>(enable: E, disable: D) -> Result<Self, ()>
     where
         E: FnMut(&mut SeatRef) + 'static,
@@ -65,7 +51,7 @@ impl Seat {
         };
         let mut listener = Box::new(listener);
 
-        let user_data = SeatListenerUserData {
+        let user_data = UserSeatListener {
             enable_seat: Box::new(enable),
             disable_seat: Box::new(disable),
         };
@@ -86,6 +72,7 @@ impl Seat {
 
 impl Drop for Seat {
     fn drop(&mut self) {
+        // Closes the seat. This frees the libseat structure.
         unsafe { sys::libseat_close_seat(self.0.as_mut()) };
     }
 }
@@ -205,5 +192,20 @@ impl SeatRef {
         } else {
             Ok(v)
         }
+    }
+}
+
+#[repr(u32)]
+pub enum LogLevel {
+    Silent = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_SILENT,
+    Error = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_ERROR,
+    Info = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_INFO,
+    Debug = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_DEBUG,
+    Last = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_LAST,
+}
+
+pub fn set_log_level(level: LogLevel) {
+    unsafe {
+        sys::libseat_set_log_level(level as u32);
     }
 }
