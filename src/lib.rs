@@ -1,6 +1,9 @@
 use libseat_sys as sys;
 
-use std::ptr::NonNull;
+use std::{
+    ops::{Deref, DerefMut},
+    ptr::NonNull,
+};
 
 use sys::{
     libseat_log_level_LIBSEAT_LOG_LEVEL_DEBUG, libseat_log_level_LIBSEAT_LOG_LEVEL_ERROR,
@@ -23,19 +26,7 @@ pub fn set_log_level(level: LogLevel) {
     }
 }
 
-// TODO: This guard is stupid, callback should live as long as seat is alive
-pub struct TemporaryFreeGuard(*mut SeatListenerUserData, *mut sys::libseat_seat_listener);
-
-impl Drop for TemporaryFreeGuard {
-    fn drop(&mut self) {
-        unsafe {
-            Box::from_raw(self.0);
-            Box::from_raw(self.1);
-        }
-    }
-}
-
-type SeatClosure = dyn FnMut(&mut Seat);
+type SeatClosure = dyn FnMut(&mut SeatRef);
 
 struct SeatListenerUserData {
     enable_seat: Box<SeatClosure>,
@@ -46,7 +37,7 @@ extern "C" fn enable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_vo
     let data = data as *mut SeatListenerUserData;
     let data = unsafe { &mut *data };
 
-    let mut seat = unsafe { Seat(NonNull::new_unchecked(seat)) };
+    let mut seat = unsafe { SeatRef(NonNull::new_unchecked(seat)) };
     (data.enable_seat)(&mut seat);
 }
 
@@ -54,59 +45,85 @@ extern "C" fn disable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_v
     let data = data as *mut SeatListenerUserData;
     let data = unsafe { &mut *data };
 
-    let mut seat = unsafe { Seat(NonNull::new_unchecked(seat)) };
+    let mut seat = unsafe { SeatRef(NonNull::new_unchecked(seat)) };
     (data.disable_seat)(&mut seat);
 }
 
-pub struct Seat(NonNull<sys::libseat>);
+pub struct Seat {
+    inner: SeatRef,
+    _ffi_listener: Box<sys::libseat_seat_listener>,
+    _user_listener: Box<SeatListenerUserData>,
+}
 
 impl Seat {
-    pub fn open<E, D>(enable: E, disable: D) -> (Option<Self>, TemporaryFreeGuard)
+    pub fn open<E, D>(enable: E, disable: D) -> Option<Self>
     where
-        E: FnMut(&mut Self) + 'static,
-        D: FnMut(&mut Self) + 'static,
+        E: FnMut(&mut SeatRef) + 'static,
+        D: FnMut(&mut SeatRef) + 'static,
     {
         let listener = sys::libseat_seat_listener {
             enable_seat: Some(enable_seat),
             disable_seat: Some(disable_seat),
         };
-        let listener = Box::into_raw(Box::new(listener));
+        let mut listener = Box::new(listener);
 
         let user_data = SeatListenerUserData {
             enable_seat: Box::new(enable),
             disable_seat: Box::new(disable),
         };
+        let mut user_data = Box::new(user_data);
 
-        let user_data = Box::into_raw(Box::new(user_data));
+        let seat =
+            unsafe { sys::libseat_open_seat(&mut *listener, &mut *user_data as *mut _ as *mut _) };
 
-        let seat = unsafe { sys::libseat_open_seat(listener, user_data as *mut _) };
-
-        let s = NonNull::new(seat).map(Self);
-
-        (s, TemporaryFreeGuard(user_data, listener))
+        NonNull::new(seat).map(|nn| Self {
+            inner: SeatRef(nn),
+            _ffi_listener: listener,
+            _user_listener: user_data,
+        })
     }
 }
 
-impl Seat {
-    pub unsafe fn name(&mut self) -> &str {
-        let cstr = sys::libseat_seat_name(self.0.as_mut());
-        let cstr = std::ffi::CStr::from_ptr(cstr as *const _);
-        cstr.to_str().unwrap()
+impl Drop for Seat {
+    fn drop(&mut self) {
+        unsafe { sys::libseat_close_seat(self.0.as_mut()) };
+    }
+}
+
+impl Deref for Seat {
+    type Target = SeatRef;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl DerefMut for Seat {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+pub struct SeatRef(NonNull<sys::libseat>);
+
+impl SeatRef {
+    pub fn name(&mut self) -> &str {
+        unsafe {
+            let cstr = sys::libseat_seat_name(self.0.as_mut());
+            let cstr = std::ffi::CStr::from_ptr(cstr as *const _);
+            cstr.to_str().unwrap()
+        }
     }
 
-    pub unsafe fn dispatch(&mut self, timeout: i32) {
-        sys::libseat_dispatch(self.0.as_mut(), timeout);
+    pub fn dispatch(&mut self, timeout: i32) {
+        unsafe { sys::libseat_dispatch(self.0.as_mut(), timeout) };
     }
 
-    pub unsafe fn disable(&mut self) {
-        sys::libseat_disable_seat(self.0.as_mut());
+    pub fn disable(&mut self) {
+        unsafe { sys::libseat_disable_seat(self.0.as_mut()) };
     }
 
-    pub unsafe fn close(mut self) {
-        sys::libseat_close_seat(self.0.as_mut());
-    }
-
-    pub unsafe fn close_device(&mut self, device_id: i32) {
-        sys::libseat_close_device(self.0.as_mut(), device_id);
+    pub fn close_device(&mut self, device_id: i32) {
+        unsafe { sys::libseat_close_device(self.0.as_mut(), device_id) };
     }
 }
