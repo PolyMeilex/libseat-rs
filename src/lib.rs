@@ -1,7 +1,11 @@
 use libseat_sys as sys;
 
 use std::{
+    ffi::CString,
+    mem::MaybeUninit,
     ops::{Deref, DerefMut},
+    os::unix::io::RawFd,
+    path::Path,
     ptr::NonNull,
 };
 
@@ -121,6 +125,23 @@ impl SeatRef {
 
     pub fn disable(&mut self) {
         unsafe { sys::libseat_disable_seat(self.0.as_mut()) };
+    }
+
+    pub fn open_device<P: AsRef<Path>>(&mut self, path: &P) -> Option<(i32, RawFd)> {
+        let path = path.as_ref();
+        let string = path.as_os_str().to_str().unwrap();
+        let cstring = CString::new(string).unwrap();
+
+        let mut fd = MaybeUninit::uninit();
+        let dev_id =
+            unsafe { sys::libseat_open_device(self.0.as_mut(), cstring.as_ptr(), fd.as_mut_ptr()) };
+
+        if dev_id != -1 {
+            let fd = unsafe { fd.assume_init() };
+            Some((dev_id, fd))
+        } else {
+            None
+        }
     }
 
     pub fn close_device(&mut self, device_id: i32) {
