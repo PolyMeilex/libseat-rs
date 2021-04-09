@@ -5,6 +5,7 @@ authors = ["Poly <marynczak.bartlomiej@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+errno = "0.2.7"
 libseat-sys = {path="./libseat-sys"}
 
 [[example]]
