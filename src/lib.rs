@@ -16,6 +16,12 @@ struct UserSeatListener {
     disable_seat: Box<dyn FnMut(&mut SeatRef)>,
 }
 
+impl std::fmt::Debug for UserSeatListener {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UserSeatListener").finish()
+    }
+}
+
 extern "C" fn enable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_void) {
     let data = data as *mut UserSeatListener;
     let data = unsafe { &mut *data };
@@ -32,6 +38,7 @@ extern "C" fn disable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_v
     (data.disable_seat)(&mut seat);
 }
 
+#[derive(Debug)]
 pub struct Seat {
     inner: SeatRef,
     _ffi_listener: Box<sys::libseat_seat_listener>,
@@ -93,6 +100,7 @@ impl DerefMut for Seat {
     }
 }
 
+#[derive(Debug)]
 pub struct SeatRef(NonNull<sys::libseat>);
 
 impl SeatRef {
