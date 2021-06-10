@@ -11,38 +11,27 @@ use std::{
     ptr::NonNull,
 };
 
-struct UserSeatListener {
+mod ffi_seat_listener;
+use ffi_seat_listener::FFI_SEAT_LISTENER;
+
+pub mod log;
+pub use log::*;
+
+struct SeatListener {
     enable_seat: Box<dyn FnMut(&mut SeatRef)>,
     disable_seat: Box<dyn FnMut(&mut SeatRef)>,
 }
 
-impl std::fmt::Debug for UserSeatListener {
+impl std::fmt::Debug for SeatListener {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("UserSeatListener").finish()
     }
 }
 
-extern "C" fn enable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_void) {
-    let data = data as *mut UserSeatListener;
-    let data = unsafe { &mut *data };
-
-    let mut seat = unsafe { SeatRef(NonNull::new_unchecked(seat)) };
-    (data.enable_seat)(&mut seat);
-}
-
-extern "C" fn disable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_void) {
-    let data = data as *mut UserSeatListener;
-    let data = unsafe { &mut *data };
-
-    let mut seat = unsafe { SeatRef(NonNull::new_unchecked(seat)) };
-    (data.disable_seat)(&mut seat);
-}
-
 #[derive(Debug)]
 pub struct Seat {
     inner: SeatRef,
-    _ffi_listener: Box<sys::libseat_seat_listener>,
-    _user_listener: Box<UserSeatListener>,
+    _seat_listener: Box<SeatListener>,
 }
 
 impl Seat {
@@ -54,28 +43,23 @@ impl Seat {
         E: FnMut(&mut SeatRef) + 'static,
         D: FnMut(&mut SeatRef) + 'static,
     {
-        let listener = sys::libseat_seat_listener {
-            enable_seat: Some(enable_seat),
-            disable_seat: Some(disable_seat),
-        };
-        let mut listener = Box::new(listener);
-
-        let user_data = UserSeatListener {
+        let user_listener = SeatListener {
             enable_seat: Box::new(enable),
             disable_seat: Box::new(disable),
         };
-        let mut user_data = Box::new(user_data);
+
+        let mut user_data = Box::new(user_listener);
+        let mut ffi_listener = FFI_SEAT_LISTENER;
 
         let seat =
-            unsafe { sys::libseat_open_seat(&mut *listener, &mut *user_data as *mut _ as *mut _) };
+            unsafe { sys::libseat_open_seat(&mut ffi_listener, user_data.as_mut() as *mut _ as _) };
 
         NonNull::new(seat)
             .map(|nn| Self {
                 inner: SeatRef(nn),
-                _ffi_listener: listener,
-                _user_listener: user_data,
+                _seat_listener: user_data,
             })
-            .ok_or(errno())
+            .ok_or_else(errno)
     }
 }
 
@@ -202,20 +186,5 @@ impl SeatRef {
         } else {
             Ok(v)
         }
-    }
-}
-
-#[repr(u32)]
-pub enum LogLevel {
-    Silent = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_SILENT,
-    Error = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_ERROR,
-    Info = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_INFO,
-    Debug = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_DEBUG,
-    Last = sys::libseat_log_level_LIBSEAT_LOG_LEVEL_LAST,
-}
-
-pub fn set_log_level(level: LogLevel) {
-    unsafe {
-        sys::libseat_set_log_level(level as u32);
     }
 }

@@ -1,26 +1,33 @@
-use libseat::{LogLevel, Seat};
+use libseat::{LogLevel, Seat, SeatRef};
+
+use std::{cell::RefCell, rc::Rc};
 
 fn main() {
     libseat::set_log_level(LogLevel::Debug);
 
-    let active = std::rc::Rc::new(std::cell::RefCell::new(false));
+    let active = Rc::new(RefCell::new(false));
 
-    let a1 = active.clone();
-    let a2 = active.clone();
-    let seat = Seat::open(
-        move |seat| {
+    let enable = {
+        let active = active.clone();
+        move |seat: &mut SeatRef| {
             println!("Enable");
             println!("Name: {}", seat.name());
 
-            *a1.borrow_mut() = true;
-        },
-        move |seat| {
+            *active.borrow_mut() = true;
+        }
+    };
+
+    let disable = {
+        let active = active.clone();
+        move |seat: &mut SeatRef| {
             println!("Disable");
 
-            *a2.borrow_mut() = false;
+            *active.borrow_mut() = false;
             seat.disable().unwrap();
-        },
-    );
+        }
+    };
+
+    let seat = Seat::open(enable, disable);
 
     if let Ok(mut seat) = seat {
         while !(*active.borrow()) {
