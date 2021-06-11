@@ -1,12 +1,18 @@
 [package]
 name = "libseat"
+description = "Safe libseat bindings"
 version = "0.1.0"
 authors = ["Poly <marynczak.bartlomiej@gmail.com>"]
 edition = "2018"
 
+keywords = ["libseat"]
+license = "MIT"
+repository = "https://github.com/PolyMeilex/libseat-rs"
+documentation = "https://docs.rs/libseat"
+
 [dependencies]
 errno = "0.2.7"
-libseat-sys = {path="./libseat-sys"}
+libseat-sys = {version="0.1.0", path="./libseat-sys"}
 
 [[example]]
 name = "simple"

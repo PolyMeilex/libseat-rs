@@ -1,8 +1,14 @@
 [package]
 name = "libseat-sys"
+description = "libseat bindings"
 version = "0.1.0"
 authors = ["Poly <marynczak.bartlomiej@gmail.com>"]
 edition = "2018"
+
+keywords = ["libseat"]
+license = "MIT"
+repository = "https://github.com/PolyMeilex/libseat-rs"
+documentation = "https://docs.rs/libseat-sys"
 
 [features]
 use_bindgen = ["bindgen", "pkg-config"]
