@@ -29,7 +29,7 @@ extern "C" fn disable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_v
 }
 
 /// A seat event listener, given to libseat_open_seat.
-pub const FFI_SEAT_LISTENER: sys::libseat_seat_listener = sys::libseat_seat_listener {
+pub static mut FFI_SEAT_LISTENER: sys::libseat_seat_listener = sys::libseat_seat_listener {
     enable_seat: Some(enable_seat),
     disable_seat: Some(disable_seat),
 };
