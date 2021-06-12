@@ -1,8 +1,13 @@
 use libseat::{LogLevel, Seat, SeatRef};
 
+use std::sync::Mutex;
 use std::{cell::RefCell, rc::Rc};
 
+use slog::*;
+
 fn main() {
+    let logger = slog::Logger::root(Mutex::new(slog_term::term_full().fuse()).fuse(), o!());
+
     libseat::set_log_level(LogLevel::Debug);
 
     let active = Rc::new(RefCell::new(false));
@@ -27,7 +32,7 @@ fn main() {
         }
     };
 
-    let seat = Seat::open(enable, disable);
+    let seat = Seat::open(enable, disable, Some(logger));
 
     if let Ok(mut seat) = seat {
         while !(*active.borrow()) {

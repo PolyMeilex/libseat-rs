@@ -58,15 +58,12 @@ extern "C" {
         timeout: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
 }
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub enum libseat_log_level {
-    LIBSEAT_LOG_LEVEL_SILENT = 0,
-    LIBSEAT_LOG_LEVEL_ERROR = 1,
-    LIBSEAT_LOG_LEVEL_INFO = 2,
-    LIBSEAT_LOG_LEVEL_DEBUG = 3,
-    LIBSEAT_LOG_LEVEL_LAST = 4,
-}
+pub const libseat_log_level_LIBSEAT_LOG_LEVEL_SILENT: libseat_log_level = 0;
+pub const libseat_log_level_LIBSEAT_LOG_LEVEL_ERROR: libseat_log_level = 1;
+pub const libseat_log_level_LIBSEAT_LOG_LEVEL_INFO: libseat_log_level = 2;
+pub const libseat_log_level_LIBSEAT_LOG_LEVEL_DEBUG: libseat_log_level = 3;
+pub const libseat_log_level_LIBSEAT_LOG_LEVEL_LAST: libseat_log_level = 4;
+pub type libseat_log_level = ::std::os::raw::c_uint;
 extern "C" {
     pub fn libseat_set_log_level(level: libseat_log_level);
 }

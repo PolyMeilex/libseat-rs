@@ -13,6 +13,18 @@ documentation = "https://docs.rs/libseat"
 [dependencies]
 errno = "0.2.7"
 libseat-sys = {version="0.1.0", path="./libseat-sys"}
+slog = "2.7.0"
+
+[features]
+default=["custom_logger"]
+custom_logger=["cc"]
+
+[build-dependencies]
+cc = { version="1.0.68",optional=true }
+
+[dev-dependencies]
+slog-term = "2.8.0"
+
 
 [[example]]
 name = "simple"

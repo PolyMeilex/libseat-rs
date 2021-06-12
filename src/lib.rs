@@ -14,8 +14,11 @@ use std::{
 mod ffi_seat_listener;
 use ffi_seat_listener::FFI_SEAT_LISTENER;
 
-pub mod log;
-pub use log::*;
+mod log;
+pub use self::log::*;
+
+mod log_handler;
+use log_handler::*;
 
 struct SeatListener {
     enable_seat: Box<dyn FnMut(&mut SeatRef)>,
@@ -32,17 +35,21 @@ impl std::fmt::Debug for SeatListener {
 pub struct Seat {
     inner: SeatRef,
     _seat_listener: Box<SeatListener>,
+    _logger: Option<LogHandler>,
 }
 
 impl Seat {
     /// Opens a seat, taking control of it if possible and returning a pointer to
     /// the libseat instance. If LIBSEAT_BACKEND is set, the specified backend is
     /// used. Otherwise, the first successful backend will be used.
-    pub fn open<E, D>(enable: E, disable: D) -> Result<Self, Errno>
+    pub fn open<E, D, L>(enable: E, disable: D, logger: L) -> Result<Self, Errno>
     where
         E: FnMut(&mut SeatRef) + 'static,
         D: FnMut(&mut SeatRef) + 'static,
+        L: Into<Option<slog::Logger>>,
     {
+        let _logger = logger.into().map(|l| LogHandler::new(l));
+
         let user_listener = SeatListener {
             enable_seat: Box::new(enable),
             disable_seat: Box::new(disable),
@@ -58,6 +65,7 @@ impl Seat {
             .map(|nn| Self {
                 inner: SeatRef(nn),
                 _seat_listener: user_data,
+                _logger,
             })
             .ok_or_else(errno)
     }
