@@ -20,9 +20,13 @@ pub use self::log::*;
 mod log_handler;
 use log_handler::*;
 
+pub enum SeatEvent {
+    Enable,
+    Disable,
+}
+
 struct SeatListener {
-    enable_seat: Box<dyn FnMut(&mut SeatRef)>,
-    disable_seat: Box<dyn FnMut(&mut SeatRef)>,
+    callback: Box<dyn FnMut(&mut SeatRef, SeatEvent)>,
 }
 
 impl std::fmt::Debug for SeatListener {
@@ -42,17 +46,15 @@ impl Seat {
     /// Opens a seat, taking control of it if possible and returning a pointer to
     /// the libseat instance. If LIBSEAT_BACKEND is set, the specified backend is
     /// used. Otherwise, the first successful backend will be used.
-    pub fn open<E, D, L>(enable: E, disable: D, logger: L) -> Result<Self, Errno>
+    pub fn open<C, L>(callback: C, logger: L) -> Result<Self, Errno>
     where
-        E: FnMut(&mut SeatRef) + 'static,
-        D: FnMut(&mut SeatRef) + 'static,
+        C: FnMut(&mut SeatRef, SeatEvent) + 'static,
         L: Into<Option<slog::Logger>>,
     {
         let _logger = logger.into().map(|l| LogHandler::new(l));
 
         let user_listener = SeatListener {
-            enable_seat: Box::new(enable),
-            disable_seat: Box::new(disable),
+            callback: Box::new(callback),
         };
 
         let mut user_data = Box::new(user_listener);

@@ -1,6 +1,6 @@
 use libseat_sys as sys;
 
-use crate::{SeatListener, SeatRef};
+use crate::{SeatEvent, SeatListener, SeatRef};
 use std::ptr::NonNull;
 
 /// The seat has been enabled, and is now valid for use. Re-open all seat
@@ -11,7 +11,7 @@ extern "C" fn enable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_vo
     let data = unsafe { &mut *data };
 
     let mut seat = unsafe { SeatRef(NonNull::new_unchecked(seat)) };
-    (data.enable_seat)(&mut seat);
+    (data.callback)(&mut seat, SeatEvent::Enable);
 }
 
 /// The seat has been disabled. This event signals that the application
@@ -25,7 +25,7 @@ extern "C" fn disable_seat(seat: *mut sys::libseat, data: *mut std::os::raw::c_v
     let data = unsafe { &mut *data };
 
     let mut seat = unsafe { SeatRef(NonNull::new_unchecked(seat)) };
-    (data.disable_seat)(&mut seat);
+    (data.callback)(&mut seat, SeatEvent::Disable);
 }
 
 /// A seat event listener, given to libseat_open_seat.

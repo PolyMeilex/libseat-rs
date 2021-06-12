@@ -1,38 +1,35 @@
-use libseat::{LogLevel, Seat, SeatRef};
+use libseat::{Seat, SeatEvent};
 
-use std::sync::Mutex;
 use std::{cell::RefCell, rc::Rc};
 
 use slog::*;
+use std::sync::Mutex;
 
 fn main() {
     let logger = slog::Logger::root(Mutex::new(slog_term::term_full().fuse()).fuse(), o!());
 
-    libseat::set_log_level(LogLevel::Debug);
-
     let active = Rc::new(RefCell::new(false));
 
-    let enable = {
+    let seat = {
         let active = active.clone();
-        move |seat: &mut SeatRef| {
-            println!("Enable");
-            println!("Name: {}", seat.name());
+        Seat::open(
+            move |seat, event| match event {
+                SeatEvent::Enable => {
+                    println!("Enable");
+                    println!("Name: {}", seat.name());
 
-            *active.borrow_mut() = true;
-        }
+                    *active.borrow_mut() = true;
+                }
+                SeatEvent::Disable => {
+                    println!("Disable");
+
+                    *active.borrow_mut() = false;
+                    seat.disable().unwrap();
+                }
+            },
+            logger,
+        )
     };
-
-    let disable = {
-        let active = active.clone();
-        move |seat: &mut SeatRef| {
-            println!("Disable");
-
-            *active.borrow_mut() = false;
-            seat.disable().unwrap();
-        }
-    };
-
-    let seat = Seat::open(enable, disable, Some(logger));
 
     if let Ok(mut seat) = seat {
         while !(*active.borrow()) {
