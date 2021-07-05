@@ -28,3 +28,6 @@ slog-term = "2.8.0"
 
 [[example]]
 name = "simple"
+
+[package.metadata.docs.rs]
+no-default-features = true
