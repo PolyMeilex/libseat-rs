@@ -20,6 +20,7 @@ pub use self::log::*;
 mod log_handler;
 use log_handler::*;
 
+#[derive(Debug, Clone, Copy)]
 pub enum SeatEvent {
     Enable,
     Disable,
