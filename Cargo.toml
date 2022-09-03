@@ -17,10 +17,11 @@ slog = "2.7.0"
 
 [features]
 default = ["custom_logger"]
-custom_logger = ["cc"]
+custom_logger = ["cc", "pkg-config"]
 
 [build-dependencies]
 cc = { version = "1.0.68", optional = true }
+pkg-config = { version = "0.3.19", optional = true }
 
 [dev-dependencies]
 slog-term = "2.8.0"

@@ -1,7 +1,17 @@
+#[cfg(not(feature = "custom_logger"))]
+fn main() {}
+
+#[cfg(feature = "custom_logger")]
 fn main() {
-    #[cfg(feature = "custom_logger")]
-    cc::Build::new()
+    let library = pkg_config::probe_library("libseat").unwrap();
+
+    let mut builder = cc::Build::new();
+    builder
         .file("./log_handler/log_handler.c")
         .flag("-Wno-unused-parameter")
-        .compile("libpreformatedlog");
+        .include("/usr/local/include");
+    for i in &library.include_paths {
+        builder.include(i);
+    }
+    builder.compile("libpreformatedlog");
 }

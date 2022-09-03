@@ -17,7 +17,9 @@ use ffi_seat_listener::FFI_SEAT_LISTENER;
 mod log;
 pub use self::log::*;
 
+#[cfg(feature = "custom_logger")]
 mod log_handler;
+#[cfg(feature = "custom_logger")]
 use log_handler::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -40,6 +42,7 @@ impl std::fmt::Debug for SeatListener {
 pub struct Seat {
     inner: SeatRef,
     _seat_listener: Box<SeatListener>,
+    #[cfg(feature = "custom_logger")]
     _logger: Option<LogHandler>,
 }
 
@@ -47,12 +50,13 @@ impl Seat {
     /// Opens a seat, taking control of it if possible and returning a pointer to
     /// the libseat instance. If LIBSEAT_BACKEND is set, the specified backend is
     /// used. Otherwise, the first successful backend will be used.
-    pub fn open<C, L>(callback: C, logger: L) -> Result<Self, Errno>
+    pub fn open<C, L>(callback: C, _logger: L) -> Result<Self, Errno>
     where
         C: FnMut(&mut SeatRef, SeatEvent) + 'static,
         L: Into<Option<slog::Logger>>,
     {
-        let _logger = logger.into().map(|l| LogHandler::new(l));
+        #[cfg(feature = "custom_logger")]
+        let _logger = _logger.into().map(|l| LogHandler::new(l));
 
         let user_listener = SeatListener {
             callback: Box::new(callback),
@@ -68,6 +72,7 @@ impl Seat {
             .map(|nn| Self {
                 inner: SeatRef(nn),
                 _seat_listener: user_data,
+                #[cfg(feature = "custom_logger")]
                 _logger,
             })
             .ok_or_else(errno)
