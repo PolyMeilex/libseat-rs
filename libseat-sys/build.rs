@@ -1,11 +1,12 @@
 #[cfg(feature = "use_bindgen")]
 fn main() {
     use bindgen::Builder;
-    println!("cargo:rustc-link-lib=seat");
+
+    let library = pkg_config::probe_library("libseat").unwrap();
 
     println!("cargo:rerun-if-changed=src/wrapper.h");
 
-    let bindings = Builder::default()
+    let mut builder = Builder::default()
         .header("src/wrapper.h")
         .layout_tests(false)
         .allowlist_recursively(false)
@@ -13,7 +14,11 @@ fn main() {
         .allowlist_function("libseat.*")
         .allowlist_var("libseat.*")
         .blocklist_item("libseat_set_log_handler")
-        .blocklist_item("libseat_log_func")
+        .blocklist_item("libseat_log_func");
+    for i in &library.include_paths {
+        builder = builder.clang_arg(format!("-I{}", i.display()));
+    }
+    let bindings = builder
         .generate()
         .expect("Unable to generate bindings");
 
@@ -24,5 +29,5 @@ fn main() {
 
 #[cfg(not(feature = "use_bindgen"))]
 fn main() {
-    println!("cargo:rustc-link-lib=seat");
+    pkg_config::probe_library("libseat").unwrap();
 }

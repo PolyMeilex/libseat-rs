@@ -11,8 +11,8 @@ repository = "https://github.com/PolyMeilex/libseat-rs"
 documentation = "https://docs.rs/libseat-sys"
 
 [features]
-use_bindgen = ["bindgen", "pkg-config"]
+use_bindgen = ["bindgen"]
 
 [build-dependencies]
 bindgen = { version = "0.58.1", optional = true }
-pkg-config = { version = "0.3.19", optional = true }
+pkg-config = { version = "0.3.19" }
