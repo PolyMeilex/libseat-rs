@@ -1,4 +1,4 @@
-#[cfg(feature = "use_bindgen")]
+#[cfg(all(feature = "use_bindgen", not(feature = "docs_rs")))]
 fn main() {
     use bindgen::Builder;
 
@@ -18,16 +18,17 @@ fn main() {
     for i in &library.include_paths {
         builder = builder.clang_arg(format!("-I{}", i.display()));
     }
-    let bindings = builder
-        .generate()
-        .expect("Unable to generate bindings");
+    let bindings = builder.generate().expect("Unable to generate bindings");
 
     bindings
         .write_to_file("./src/bindings.rs")
         .expect("Couldn't write bindings!");
 }
 
-#[cfg(not(feature = "use_bindgen"))]
+#[cfg(all(not(feature = "use_bindgen"), not(feature = "docs_rs")))]
 fn main() {
     pkg_config::probe_library("libseat").unwrap();
 }
+
+#[cfg(feature = "docs_rs")]
+fn main() {}
