@@ -32,7 +32,7 @@ impl LogHandler {
     }
 
     fn log(logger: &slog::Logger, level: LogLevel, msg: &str) {
-        match LogLevel::from(level) {
+        match level {
             LogLevel::Silent => trace!(logger, "{}", msg),
             LogLevel::Error => error!(logger, "{}", msg),
             LogLevel::Info => info!(logger, "{}", msg),
@@ -52,7 +52,7 @@ extern "C" fn ffi_handler(level: LogLevel, msg: *const c_char, data: *const c_vo
 
     let cstr = unsafe { CStr::from_ptr(msg) };
     match cstr.to_str() {
-        Ok(msg) => LogHandler::log(&logger, level, msg),
+        Ok(msg) => LogHandler::log(logger, level, msg),
         Err(err) => error!(logger, "{:?}", err),
     }
 }

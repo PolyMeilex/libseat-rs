@@ -56,7 +56,7 @@ impl Seat {
         L: Into<Option<slog::Logger>>,
     {
         #[cfg(feature = "custom_logger")]
-        let _logger = _logger.into().map(|l| LogHandler::new(l));
+        let _logger = _logger.into().map(LogHandler::new);
 
         let user_listener = SeatListener {
             callback: Box::new(callback),
