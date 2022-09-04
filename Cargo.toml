@@ -12,7 +12,7 @@ documentation = "https://docs.rs/libseat"
 
 [dependencies]
 errno = "0.2.7"
-libseat-sys = { version = "0.1.0", path = "./libseat-sys" }
+libseat-sys = { version = "0.1.5", path = "./libseat-sys" }
 slog = "2.7.0"
 
 [features]
