@@ -6,7 +6,7 @@ use std::{
     ffi::CString,
     mem::MaybeUninit,
     ops::{Deref, DerefMut},
-    os::unix::io::RawFd,
+    os::unix::io::{AsFd, BorrowedFd, RawFd},
     path::Path,
     ptr::NonNull,
 };
@@ -122,18 +122,20 @@ impl SeatRef {
     ///
     /// The device may be revoked in some situations, such as in situations where a
     /// seat session switch is being forced.
-    pub fn open_device<P: AsRef<Path>>(&mut self, path: &P) -> Result<(i32, RawFd), Errno> {
+    pub fn open_device<P: AsRef<Path>>(&mut self, path: &P) -> Result<Device, Errno> {
         let path = path.as_ref();
         let string = path.as_os_str().to_str().unwrap();
         let cstring = CString::new(string).unwrap();
 
         let mut fd = MaybeUninit::uninit();
-        let dev_id =
+        let id =
             unsafe { sys::libseat_open_device(self.0.as_mut(), cstring.as_ptr(), fd.as_mut_ptr()) };
 
-        if dev_id != -1 {
-            let fd = unsafe { fd.assume_init() };
-            Ok((dev_id, fd))
+        if id != -1 {
+            Ok(Device {
+                id,
+                fd: unsafe { fd.assume_init() },
+            })
         } else {
             Err(errno())
         }
@@ -141,8 +143,8 @@ impl SeatRef {
 
     /// Closes a device that has been opened on the seat using the device_id from
     /// libseat_open_device.
-    pub fn close_device(&mut self, device_id: i32) -> Result<(), Errno> {
-        if unsafe { sys::libseat_close_device(self.0.as_mut(), device_id) } == 0 {
+    pub fn close_device(&mut self, device: Device) -> Result<(), Errno> {
+        if unsafe { sys::libseat_close_device(self.0.as_mut(), device.id) } == 0 {
             Ok(())
         } else {
             Err(errno())
@@ -177,12 +179,12 @@ impl SeatRef {
     /// poll the libseat connection for events that need to be dispatched.
     ///
     /// Returns a pollable fd on success.
-    pub fn get_fd(&mut self) -> Result<RawFd, Errno> {
+    pub fn get_fd(&mut self) -> Result<BorrowedFd, Errno> {
         let fd = unsafe { sys::libseat_get_fd(self.0.as_mut()) };
         if fd == -1 {
             Err(errno())
         } else {
-            Ok(fd)
+            Ok(unsafe { BorrowedFd::borrow_raw(fd) })
         }
     }
 
@@ -202,5 +204,23 @@ impl SeatRef {
         } else {
             Ok(v)
         }
+    }
+}
+
+/// Wrapper around the device id and fd of a libseat device. Opened with
+/// [SeatRef::open_device].
+///
+/// Use `AsFd` to access the file descriptor. The device should be closed
+/// with [SeatRef::close_device].
+#[derive(Debug)]
+#[must_use]
+pub struct Device {
+    id: i32,
+    fd: RawFd,
+}
+
+impl AsFd for Device {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(self.fd) }
     }
 }
