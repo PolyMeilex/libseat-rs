@@ -13,7 +13,7 @@ documentation = "https://docs.rs/libseat"
 [dependencies]
 errno = "0.3.1"
 libseat-sys = { version = "0.1.7", path = "./libseat-sys" }
-log = "0.4.19"
+log = "0.4"
 
 [features]
 default = ["custom_logger"]
