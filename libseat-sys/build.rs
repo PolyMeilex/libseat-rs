@@ -1,4 +1,4 @@
-#[cfg(all(feature = "use_bindgen", not(docsrs)))]
+#[cfg(all(feature = "use_bindgen", not(any(docsrs, feature = "docs_rs"))))]
 fn main() {
     use bindgen::Builder;
 
@@ -25,10 +25,10 @@ fn main() {
         .expect("Couldn't write bindings!");
 }
 
-#[cfg(all(not(feature = "use_bindgen"), not(docsrs)))]
+#[cfg(all(not(feature = "use_bindgen"), not(any(docsrs, feature = "docs_rs"))))]
 fn main() {
     pkg_config::probe_library("libseat").unwrap();
 }
 
-#[cfg(docsrs)]
+#[cfg(any(docsrs, feature = "docs_rs"))]
 fn main() {}

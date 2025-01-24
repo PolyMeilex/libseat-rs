@@ -1,7 +1,7 @@
 [package]
 name = "libseat"
 description = "Safe libseat bindings"
-version = "0.2.2"
+version = "0.2.3"
 authors = ["Poly <marynczak.bartlomiej@gmail.com>"]
 edition = "2018"
 
@@ -12,12 +12,14 @@ documentation = "https://docs.rs/libseat"
 
 [dependencies]
 errno = "0.3.1"
-libseat-sys = { version = "0.1.8", path = "./libseat-sys" }
+libseat-sys = { version = "0.1.9", path = "./libseat-sys" }
 log = "0.4"
 
 [features]
 default = ["custom_logger"]
 custom_logger = ["cc", "pkg-config"]
+# Used to disable linking in docs.rs enviroment
+docs_rs = ["libseat-sys/docs_rs"]
 
 [build-dependencies]
 cc = { version = "1.0.68", optional = true }
@@ -28,5 +30,4 @@ name = "simple"
 
 [package.metadata.docs.rs]
 no-default-features = true
-rustc-args = ["--cfg", "docsrs"]
-rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
+features = ["libseat-sys/docs_rs"]
