@@ -10,8 +10,8 @@ pub type LogHandlerFn =
     unsafe extern "C" fn(level: LogLevel, msg: *const c_char, data: *const c_void);
 
 extern "C" {
-    pub fn init_preformated_log_handler(handler: LogHandlerFn, data: *const c_void);
-    pub fn drop_preformated_log_handler();
+    pub fn init_preformatted_log_handler(handler: LogHandlerFn, data: *const c_void);
+    pub fn drop_preformatted_log_handler();
 }
 
 /// Custom LibSeat log handler
@@ -22,7 +22,7 @@ impl LogHandler {
     pub fn new() -> Self {
         crate::set_log_level(LogLevel::Debug);
 
-        unsafe { init_preformated_log_handler(ffi_handler, std::ptr::null()) };
+        unsafe { init_preformatted_log_handler(ffi_handler, std::ptr::null()) };
 
         Self
     }
@@ -39,7 +39,7 @@ impl LogHandler {
 
 impl Drop for LogHandler {
     fn drop(&mut self) {
-        unsafe { drop_preformated_log_handler() }
+        unsafe { drop_preformatted_log_handler() }
     }
 }
 

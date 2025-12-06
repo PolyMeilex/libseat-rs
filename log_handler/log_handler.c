@@ -22,7 +22,7 @@ int str_length(const char *format, va_list args)
     return retval;
 }
 
-static void formater_handler(enum libseat_log_level level, const char *fmt, va_list args)
+static void formatter_handler(enum libseat_log_level level, const char *fmt, va_list args)
 {
     if (level > LIBSEAT_LOG_LEVEL_LAST)
     {
@@ -46,14 +46,14 @@ static void formater_handler(enum libseat_log_level level, const char *fmt, va_l
     }
 }
 
-void init_preformated_log_handler(LogHandler handler, const void *userdata)
+void init_preformatted_log_handler(LogHandler handler, const void *userdata)
 {
     current_userdata = userdata;
     current_log_handler = handler;
-    libseat_set_log_handler(formater_handler);
+    libseat_set_log_handler(formatter_handler);
 }
 
-void drop_preformated_log_handler()
+void drop_preformatted_log_handler()
 {
     libseat_set_log_handler(NULL);
     current_userdata = NULL;
