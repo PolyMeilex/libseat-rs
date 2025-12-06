@@ -51,9 +51,3 @@ void init_preformatted_log_handler(LogHandler handler)
     current_log_handler = handler;
     libseat_set_log_handler(formatter_handler);
 }
-
-void drop_preformatted_log_handler()
-{
-    libseat_set_log_handler(NULL);
-    current_log_handler = NULL;
-}

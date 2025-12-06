@@ -7,7 +7,6 @@ type LogHandlerFn = unsafe extern "C" fn(level: LogLevel, msg: *const c_char);
 
 extern "C" {
     fn init_preformatted_log_handler(handler: LogHandlerFn);
-    fn drop_preformatted_log_handler();
 }
 
 /// Custom LibSeat log handler
@@ -30,12 +29,6 @@ impl LogHandler {
             LogLevel::Info => info!("{}", msg),
             LogLevel::Debug | LogLevel::Last => debug!("{}", msg),
         }
-    }
-}
-
-impl Drop for LogHandler {
-    fn drop(&mut self) {
-        unsafe { drop_preformatted_log_handler() }
     }
 }
 
