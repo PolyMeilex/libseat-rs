@@ -66,7 +66,7 @@ impl Seat {
         let mut user_data = Box::new(user_listener);
 
         let seat = unsafe {
-            sys::libseat_open_seat(&mut FFI_SEAT_LISTENER, user_data.as_mut() as *mut _ as _)
+            sys::libseat_open_seat(&FFI_SEAT_LISTENER, user_data.as_mut() as *mut _ as _)
         };
 
         NonNull::new(seat)

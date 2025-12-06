@@ -17,7 +17,7 @@ pub struct libseat_seat_listener {
 }
 extern "C" {
     pub fn libseat_open_seat(
-        listener: *mut libseat_seat_listener,
+        listener: *const libseat_seat_listener,
         userdata: *mut ::std::os::raw::c_void,
     ) -> *mut libseat;
 }
