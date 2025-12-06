@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "log_handler.h"
+typedef void (*LogHandler)(enum libseat_log_level level, const char *msg, const void *userdata);
 
 static void noop_handler(enum libseat_log_level level, const char *msg, const void *userdata)
 {
