@@ -180,7 +180,7 @@ impl SeatRef {
     /// poll the libseat connection for events that need to be dispatched.
     ///
     /// Returns a pollable fd on success.
-    pub fn get_fd(&mut self) -> Result<BorrowedFd, Errno> {
+    pub fn get_fd(&mut self) -> Result<BorrowedFd<'_>, Errno> {
         let fd = unsafe { sys::libseat_get_fd(self.0.as_mut()) };
         if fd == -1 {
             Err(errno())
