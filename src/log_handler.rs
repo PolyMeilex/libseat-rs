@@ -1,13 +1,9 @@
 use log::{debug, error, info, trace};
-use std::{
-    ffi::CStr,
-    os::raw::{c_char},
-};
+use std::{ffi::CStr, os::raw::c_char, sync::LazyLock};
 
 use crate::LogLevel;
 
-pub type LogHandlerFn =
-    unsafe extern "C" fn(level: LogLevel, msg: *const c_char);
+type LogHandlerFn = unsafe extern "C" fn(level: LogLevel, msg: *const c_char);
 
 extern "C" {
     fn init_preformatted_log_handler(handler: LogHandlerFn);
@@ -16,10 +12,10 @@ extern "C" {
 
 /// Custom LibSeat log handler
 #[derive(Debug)]
-pub struct LogHandler;
+struct LogHandler;
 
 impl LogHandler {
-    pub fn new() -> Self {
+    fn new() -> Self {
         crate::set_log_level(LogLevel::Debug);
 
         unsafe { init_preformatted_log_handler(ffi_handler) };
@@ -49,4 +45,11 @@ extern "C" fn ffi_handler(level: LogLevel, msg: *const c_char) {
         Ok(msg) => LogHandler::log(level, msg),
         Err(err) => error!("{:?}", err),
     }
+}
+
+static LOG_HANDLER: LazyLock<LogHandler> = LazyLock::new(LogHandler::new);
+
+/// Initialise libseat log handler
+pub fn init() {
+    let _ = &*LOG_HANDLER;
 }

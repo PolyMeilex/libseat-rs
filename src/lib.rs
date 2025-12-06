@@ -19,8 +19,6 @@ pub use self::log::*;
 
 #[cfg(feature = "custom_logger")]
 mod log_handler;
-#[cfg(feature = "custom_logger")]
-use log_handler::*;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SeatEvent {
@@ -44,8 +42,6 @@ impl std::fmt::Debug for SeatListener {
 pub struct Seat {
     inner: SeatRef,
     _seat_listener: Box<SeatListener>,
-    #[cfg(feature = "custom_logger")]
-    _logger: LogHandler,
 }
 
 impl Seat {
@@ -57,7 +53,7 @@ impl Seat {
         C: FnMut(&mut SeatRef, SeatEvent) + 'static,
     {
         #[cfg(feature = "custom_logger")]
-        let _logger = LogHandler::new();
+        log_handler::init();
 
         let user_listener = SeatListener {
             callback: Box::new(callback),
@@ -73,8 +69,6 @@ impl Seat {
             .map(|nn| Self {
                 inner: SeatRef(nn),
                 _seat_listener: user_data,
-                #[cfg(feature = "custom_logger")]
-                _logger,
             })
             .ok_or_else(errno)
     }
