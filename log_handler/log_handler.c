@@ -4,10 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef void (*LogHandler)(enum libseat_log_level level, const char *msg, const void *userdata);
+typedef void (*LogHandler)(enum libseat_log_level level, const char *msg);
 
 static LogHandler current_log_handler = NULL;
-static const void *current_userdata = NULL;
 
 int str_length(const char *format, va_list args)
 {
@@ -41,15 +40,14 @@ static void formatter_handler(enum libseat_log_level level, const char *fmt, va_
 
         vsnprintf(buffer, length, fmt, args);
 
-        current_log_handler(level, buffer, current_userdata);
+        current_log_handler(level, buffer);
 
         free(buffer);
     }
 }
 
-void init_preformatted_log_handler(LogHandler handler, const void *userdata)
+void init_preformatted_log_handler(LogHandler handler)
 {
-    current_userdata = userdata;
     current_log_handler = handler;
     libseat_set_log_handler(formatter_handler);
 }
@@ -57,6 +55,5 @@ void init_preformatted_log_handler(LogHandler handler, const void *userdata)
 void drop_preformatted_log_handler()
 {
     libseat_set_log_handler(NULL);
-    current_userdata = NULL;
     current_log_handler = NULL;
 }

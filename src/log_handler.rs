@@ -1,16 +1,16 @@
 use log::{debug, error, info, trace};
 use std::{
     ffi::CStr,
-    os::raw::{c_char, c_void},
+    os::raw::{c_char},
 };
 
 use crate::LogLevel;
 
 pub type LogHandlerFn =
-    unsafe extern "C" fn(level: LogLevel, msg: *const c_char, data: *const c_void);
+    unsafe extern "C" fn(level: LogLevel, msg: *const c_char);
 
 extern "C" {
-    pub fn init_preformatted_log_handler(handler: LogHandlerFn, data: *const c_void);
+    pub fn init_preformatted_log_handler(handler: LogHandlerFn);
     pub fn drop_preformatted_log_handler();
 }
 
@@ -22,7 +22,7 @@ impl LogHandler {
     pub fn new() -> Self {
         crate::set_log_level(LogLevel::Debug);
 
-        unsafe { init_preformatted_log_handler(ffi_handler, std::ptr::null()) };
+        unsafe { init_preformatted_log_handler(ffi_handler) };
 
         Self
     }
@@ -43,7 +43,7 @@ impl Drop for LogHandler {
     }
 }
 
-extern "C" fn ffi_handler(level: LogLevel, msg: *const c_char, _data: *const c_void) {
+extern "C" fn ffi_handler(level: LogLevel, msg: *const c_char) {
     let cstr = unsafe { CStr::from_ptr(msg) };
     match cstr.to_str() {
         Ok(msg) => LogHandler::log(level, msg),
