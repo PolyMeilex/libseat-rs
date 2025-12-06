@@ -4,18 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef void (*LogHandler)(enum libseat_log_level level, const char *msg);
+typedef void LogHandler(enum libseat_log_level level, const char *msg);
 
-static LogHandler current_log_handler = NULL;
-
-int str_length(const char *format, va_list args)
-{
-    va_list argcopy;
-    va_copy(argcopy, args);
-    int retval = vsnprintf(NULL, 0, format, argcopy);
-    va_end(argcopy);
-    return retval;
-}
+static LogHandler *current_log_handler = NULL;
 
 static void formatter_handler(enum libseat_log_level level, const char *fmt, va_list args)
 {
@@ -29,24 +20,33 @@ static void formatter_handler(enum libseat_log_level level, const char *fmt, va_
         level = LIBSEAT_LOG_LEVEL_LAST;
     }
 
-    int length = str_length(fmt, args);
+    va_list argcopy;
+    va_copy(argcopy, args);
+    int length = vsnprintf(NULL, 0, fmt, argcopy);
+    va_end(argcopy);
 
-    if (length >= 0)
+    if (length < 0)
     {
-        // +1 for null terminator
-        length += 1;
-
-        char *buffer = (char *)malloc(length * sizeof(char));
-
-        vsnprintf(buffer, length, fmt, args);
-
-        current_log_handler(level, buffer);
-
-        free(buffer);
+        return;
     }
+
+    // +1 for null terminator
+    length += 1;
+
+    char *buffer = malloc(length);
+    if (buffer == NULL)
+    {
+        return;
+    }
+
+    vsnprintf(buffer, length, fmt, args);
+
+    current_log_handler(level, buffer);
+
+    free(buffer);
 }
 
-void init_preformatted_log_handler(LogHandler handler)
+void init_preformatted_log_handler(LogHandler *handler)
 {
     current_log_handler = handler;
     libseat_set_log_handler(formatter_handler);
