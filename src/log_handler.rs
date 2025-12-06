@@ -10,8 +10,8 @@ pub type LogHandlerFn =
     unsafe extern "C" fn(level: LogLevel, msg: *const c_char);
 
 extern "C" {
-    pub fn init_preformatted_log_handler(handler: LogHandlerFn);
-    pub fn drop_preformatted_log_handler();
+    fn init_preformatted_log_handler(handler: LogHandlerFn);
+    fn drop_preformatted_log_handler();
 }
 
 /// Custom LibSeat log handler
