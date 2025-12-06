@@ -6,11 +6,7 @@
 
 typedef void (*LogHandler)(enum libseat_log_level level, const char *msg, const void *userdata);
 
-static void noop_handler(enum libseat_log_level level, const char *msg, const void *userdata)
-{
-}
-
-static LogHandler current_log_handler = noop_handler;
+static LogHandler current_log_handler = NULL;
 static const void *current_userdata = NULL;
 
 int str_length(const char *format, va_list args)
@@ -24,6 +20,11 @@ int str_length(const char *format, va_list args)
 
 static void formatter_handler(enum libseat_log_level level, const char *fmt, va_list args)
 {
+    if (current_log_handler == NULL)
+    {
+        return;
+    }
+
     if (level > LIBSEAT_LOG_LEVEL_LAST)
     {
         level = LIBSEAT_LOG_LEVEL_LAST;
@@ -57,5 +58,5 @@ void drop_preformatted_log_handler()
 {
     libseat_set_log_handler(NULL);
     current_userdata = NULL;
-    current_log_handler = noop_handler;
+    current_log_handler = NULL;
 }
