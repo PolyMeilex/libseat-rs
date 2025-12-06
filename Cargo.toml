@@ -28,6 +28,9 @@ pkg-config = { version = "0.3.19", optional = true }
 [[example]]
 name = "simple"
 
+[dev-dependencies]
+stderrlog = { version = "0.6.0", default-features = false }
+
 [package.metadata.docs.rs]
 no-default-features = true
 features = ["libseat-sys/docs_rs"]

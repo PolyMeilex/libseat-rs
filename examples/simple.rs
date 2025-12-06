@@ -3,6 +3,8 @@ use libseat::{Seat, SeatEvent};
 use std::{cell::RefCell, rc::Rc};
 
 fn main() {
+    stderrlog::new().verbosity(log::LevelFilter::Trace).init().unwrap();
+
     let active = Rc::new(RefCell::new(false));
 
     let seat = {
