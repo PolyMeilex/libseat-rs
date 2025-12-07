@@ -7,6 +7,7 @@ fn main() {
 
     let mut builder = cc::Build::new();
     builder
+        .std("c11")
         .file("./log_handler/log_handler.c")
         .flag("-Wno-unused-parameter")
         .include("/usr/local/include");

@@ -19,8 +19,6 @@ pub use self::log::*;
 
 #[cfg(feature = "custom_logger")]
 mod log_handler;
-#[cfg(feature = "custom_logger")]
-use log_handler::*;
 
 #[derive(Debug, Clone, Copy)]
 pub enum SeatEvent {
@@ -44,8 +42,6 @@ impl std::fmt::Debug for SeatListener {
 pub struct Seat {
     inner: SeatRef,
     _seat_listener: Box<SeatListener>,
-    #[cfg(feature = "custom_logger")]
-    _logger: LogHandler,
 }
 
 impl Seat {
@@ -57,7 +53,7 @@ impl Seat {
         C: FnMut(&mut SeatRef, SeatEvent) + 'static,
     {
         #[cfg(feature = "custom_logger")]
-        let _logger = LogHandler::new();
+        log_handler::init();
 
         let user_listener = SeatListener {
             callback: Box::new(callback),
@@ -66,15 +62,13 @@ impl Seat {
         let mut user_data = Box::new(user_listener);
 
         let seat = unsafe {
-            sys::libseat_open_seat(&mut FFI_SEAT_LISTENER, user_data.as_mut() as *mut _ as _)
+            sys::libseat_open_seat(&FFI_SEAT_LISTENER, user_data.as_mut() as *mut _ as _)
         };
 
         NonNull::new(seat)
             .map(|nn| Self {
                 inner: SeatRef(nn),
                 _seat_listener: user_data,
-                #[cfg(feature = "custom_logger")]
-                _logger,
             })
             .ok_or_else(errno)
     }
@@ -180,7 +174,7 @@ impl SeatRef {
     /// poll the libseat connection for events that need to be dispatched.
     ///
     /// Returns a pollable fd on success.
-    pub fn get_fd(&mut self) -> Result<BorrowedFd, Errno> {
+    pub fn get_fd(&mut self) -> Result<BorrowedFd<'_>, Errno> {
         let fd = unsafe { sys::libseat_get_fd(self.0.as_mut()) };
         if fd == -1 {
             Err(errno())

@@ -12,7 +12,7 @@ documentation = "https://docs.rs/libseat"
 
 [dependencies]
 errno = "0.3.1"
-libseat-sys = { version = "0.1.9", path = "./libseat-sys" }
+libseat-sys = { version = "0.2.0", path = "./libseat-sys" }
 log = "0.4"
 
 [features]
@@ -27,6 +27,9 @@ pkg-config = { version = "0.3.19", optional = true }
 
 [[example]]
 name = "simple"
+
+[dev-dependencies]
+stderrlog = { version = "0.6.0", default-features = false }
 
 [package.metadata.docs.rs]
 no-default-features = true
