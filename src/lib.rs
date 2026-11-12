@@ -72,6 +72,24 @@ impl Seat {
             })
             .ok_or_else(errno)
     }
+
+    /// Reads and dispatches events on the libseat connection fd.
+    ///
+    /// The specified timeout dictates how long libseat might wait for data if none
+    /// is available: 0 means that no wait will occur, -1 means that libseat might
+    /// wait indefinitely for data to arrive, while > 0 is the maximum wait in
+    /// milliseconds that might occur.
+    ///
+    /// Returns a positive number signifying processed internal messages on success.
+    /// Returns 0 if no messages were processed. Returns -1 and sets errno on error.
+    pub fn dispatch(&mut self, timeout: i32) -> Result<i32, Errno> {
+        let v = unsafe { sys::libseat_dispatch(self.0.as_mut(), timeout) };
+        if v == -1 {
+            Err(errno())
+        } else {
+            Ok(v)
+        }
+    }
 }
 
 impl Drop for Seat {
@@ -180,24 +198,6 @@ impl SeatRef {
             Err(errno())
         } else {
             Ok(unsafe { BorrowedFd::borrow_raw(fd) })
-        }
-    }
-
-    /// Reads and dispatches events on the libseat connection fd.
-    ///
-    /// The specified timeout dictates how long libseat might wait for data if none
-    /// is available: 0 means that no wait will occur, -1 means that libseat might
-    /// wait indefinitely for data to arrive, while > 0 is the maximum wait in
-    /// milliseconds that might occur.
-    ///
-    /// Returns a positive number signifying processed internal messages on success.
-    /// Returns 0 if no messages were processed. Returns -1 and sets errno on error.
-    pub fn dispatch(&mut self, timeout: i32) -> Result<i32, Errno> {
-        let v = unsafe { sys::libseat_dispatch(self.0.as_mut(), timeout) };
-        if v == -1 {
-            Err(errno())
-        } else {
-            Ok(v)
         }
     }
 }
