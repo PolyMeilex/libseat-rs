@@ -6,7 +6,7 @@ use std::{
     ffi::CString,
     mem::MaybeUninit,
     ops::{Deref, DerefMut},
-    os::unix::io::{AsFd, BorrowedFd, RawFd},
+    os::unix::io::{AsFd, BorrowedFd, FromRawFd, OwnedFd},
     path::Path,
     ptr::NonNull,
 };
@@ -129,7 +129,9 @@ impl SeatRef {
         if id != -1 {
             Ok(Device {
                 id,
-                fd: unsafe { fd.assume_init() },
+                // SAFETY: libseat opened fd that the caller now owns,
+                // even tho libseat fails to mention that in its docs...
+                fd: unsafe { OwnedFd::from_raw_fd(fd.assume_init()) },
             })
         } else {
             Err(errno())
@@ -139,11 +141,16 @@ impl SeatRef {
     /// Closes a device that has been opened on the seat using the device_id from
     /// libseat_open_device.
     pub fn close_device(&mut self, device: Device) -> Result<(), Errno> {
-        if unsafe { sys::libseat_close_device(self.0.as_mut(), device.id) } == 0 {
+        let res = if unsafe { sys::libseat_close_device(self.0.as_mut(), device.id) } == 0 {
             Ok(())
         } else {
             Err(errno())
-        }
+        };
+
+        // Close the FD
+        drop(device.fd);
+
+        res
     }
 
     /// Retrieves the name of the seat that is currently made available through the
@@ -211,11 +218,11 @@ impl SeatRef {
 #[must_use]
 pub struct Device {
     id: i32,
-    fd: RawFd,
+    fd: OwnedFd,
 }
 
 impl AsFd for Device {
     fn as_fd(&self) -> BorrowedFd<'_> {
-        unsafe { BorrowedFd::borrow_raw(self.fd) }
+        self.fd.as_fd()
     }
 }
