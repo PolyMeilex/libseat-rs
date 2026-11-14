@@ -41,7 +41,7 @@ impl std::fmt::Debug for SeatListener {
 #[derive(Debug)]
 pub struct Seat {
     inner: SeatRef,
-    _seat_listener: Box<SeatListener>,
+    seat_listener: NonNull<SeatListener>,
 }
 
 impl Seat {
@@ -59,18 +59,21 @@ impl Seat {
             callback: Box::new(callback),
         };
 
-        let mut user_data = Box::new(user_listener);
+        let user_data = Box::into_non_null(Box::new(user_listener));
 
-        let seat = unsafe {
-            sys::libseat_open_seat(&FFI_SEAT_LISTENER, user_data.as_mut() as *mut _ as _)
+        let seat = unsafe { sys::libseat_open_seat(&FFI_SEAT_LISTENER, user_data.as_ptr().cast()) };
+
+        let Some(seat) = NonNull::new(seat) else {
+            let err = errno();
+            // SAFETY: libseat failed to open the seat, so it holds no ptr to `user_data`
+            drop(unsafe { Box::from_raw(user_data.as_ptr()) });
+            return Err(err);
         };
 
-        NonNull::new(seat)
-            .map(|nn| Self {
-                inner: SeatRef(nn),
-                _seat_listener: user_data,
-            })
-            .ok_or_else(errno)
+        Ok(Self {
+            inner: SeatRef(seat),
+            seat_listener: user_data,
+        })
     }
 }
 
@@ -78,6 +81,8 @@ impl Drop for Seat {
     fn drop(&mut self) {
         // Closes the seat. This frees the libseat structure.
         unsafe { sys::libseat_close_seat(self.0.as_mut()) };
+        // SAFETY: the seat is closed, so libseat should no longer hold a ptr to our data
+        drop(unsafe { Box::from_raw(self.seat_listener.as_ptr()) });
     }
 }
 
